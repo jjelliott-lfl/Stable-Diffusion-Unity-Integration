@@ -56,6 +56,7 @@ public class StableDiffusionText2MaterialControlNet : StableDiffusionGenerator
     [Range(1, 100)] public int tilingY = 1;
     [Range(0, 1)] public float metallic = 0.1f;
     [Range(0, 1)] public float smoothness = 0.5f;
+    [Range(0, 2)] public float controlNetIntensity = 0.5f;
 
     public bool generateNormalMap = true;
     [Range(0, 10)] public float normalMapStrength = 0.5f;
@@ -269,9 +270,23 @@ public class StableDiffusionText2MaterialControlNet : StableDiffusionGenerator
     IEnumerator SubmitFromDepthTexture(Texture2D depthTexture)
     {
         HttpWebRequest httpWebRequest = null;
-        
+
         byte[] inputImgBytes = depthTexture.EncodeToPNG();
         string inputImgString = Convert.ToBase64String(inputImgBytes);
+
+        using (FileStream imageFile = new FileStream(Path.Combine(Application.streamingAssetsPath, "depthtest.png"),
+            FileMode.Create))
+        {
+#if UNITY_EDITOR
+            AssetDatabase.StartAssetEditing();
+#endif
+            yield return imageFile.WriteAsync(inputImgBytes, 0, inputImgBytes.Length);
+#if UNITY_EDITOR
+            AssetDatabase.StopAssetEditing();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+#endif
+        }
 
         try
         {
@@ -303,7 +318,11 @@ public class StableDiffusionText2MaterialControlNet : StableDiffusionGenerator
                 sd.height = height;
                 sd.seed = seed;
                 sd.tiling = tiling;
-                sd.controlnet_input_image = new[] {inputImgString};
+                //sd.alwayson_scripts["controlnet"].controlnet_guidance = controlNetIntensity;
+                sd.alwayson_scripts["controlnet"].controlnet_input_image = inputImgString;
+                sd.alwayson_scripts["controlnet"].controlnet_module = "depth";
+                sd.alwayson_scripts["controlnet"].controlnet_model = "control_depth-fp16 [400750f6]";
+                
                 if (selectedSampler >= 0 && selectedSampler < samplersList.Length)
                     sd.sampler_name = samplersList[selectedSampler];
 
@@ -341,6 +360,18 @@ public class StableDiffusionText2MaterialControlNet : StableDiffusionGenerator
 
             // Stream the result from the server
             var httpResponse = webResponse.Result;
+
+            if (httpResponse == null || webResponse.IsFaulted)
+            {
+                Debug.LogError(
+                    $"Fault in request: {webResponse.Status}");
+
+                generating = false;
+#if UNITY_EDITOR
+                EditorUtility.ClearProgressBar();
+#endif
+                yield break;
+            }
 
             using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
             {

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 /// <summary>
@@ -13,6 +15,7 @@ public class SDSettings : ScriptableObject
     public string ImageToImageAPI = "/sdapi/v1/img2img";
     public string OptionAPI = "/sdapi/v1/options";
     public string ProgressAPI = "/sdapi/v1/progress";
+    public string ControlNetAPI = "/controlnet/txt2img";
     public string OutputFolder = "/streamingAssets";
     public string sampler = "Euler a";
     public int width = 512;
@@ -27,6 +30,25 @@ public class SDSettings : ScriptableObject
 
     [Header("URP Settings")] public bool useUniversalRenderPipeline = false;
 }
+class ControlNetArgs
+{
+    public Dictionary<string, string>[] args = new[] {new Dictionary<string, string>()};
+
+    public string controlnet_input_image
+    {
+        set => args[0]["input_image"] = value;
+    }
+    public string controlnet_module {
+        set => args[0]["module"] = value;
+    }
+
+    public string controlnet_model {
+        set => args[0]["model"] = value;
+    }
+    public float controlnet_guidance {
+        set => args[0]["input_image"] = value.ToString();
+    }
+};
 
 /// <summary>
 /// Data structure to easily serialize the parameters to send
@@ -152,10 +174,7 @@ class SDParamsInTxt2ImgControlNet
     public float s_noise = 1;
     public bool override_settings_restore_afterwards = true;
     public string sampler_index = "Euler";
-    public string[] controlnet_input_image = {""};
-    public string controlnet_module = "depth";
-    public string controlnet_model = "control_depth-fp16 [400750f6]";
-    public float controlnet_guidance = 1.0f;
+    public Dictionary<string, ControlNetArgs> alwayson_scripts = new() {{"controlnet", new ControlNetArgs()}};
 }
 
 
