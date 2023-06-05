@@ -1,0 +1,3 @@
+[submodule "Assets/Submodules/unity-sd-a1111-client"]
+	path = Assets/Submodules/unity-sd-a1111-client
+	url = git@github.com:jjelliott-lfl/unity-sd-a1111-client.git
